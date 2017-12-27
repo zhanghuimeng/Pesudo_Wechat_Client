@@ -25,13 +25,16 @@ signals:
 public slots:
     void slot_send_login(QString username, QString password);
     void slot_send_bytes(const char* bytes);
+    void slot_send_json(QJsonObject jsonObject);
 
 protected:
-    void parseReceived(const char* bytes, int length);
+    void parseReceived(const char* bytes);
 
 private:
     void log(QString level, QString msg);
     QByteArray jsonToString(QJsonObject json);
+    QByteArray jsonToReadableString(QJsonObject json);
+    QJsonObject stringToJson(const char *bytes);
 
     char* buffer;
     int socketfd;  // 套接字描述符

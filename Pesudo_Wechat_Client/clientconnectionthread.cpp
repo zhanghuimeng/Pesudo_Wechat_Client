@@ -15,13 +15,33 @@ ClientConnectionThread::ClientConnectionThread(): QThread(), port(6666), userVal
 QByteArray ClientConnectionThread::jsonToString(QJsonObject json)
 {
     QJsonDocument doc(json);
-    QByteArray ba = doc.toBinaryData();
+    QByteArray ba = doc.toJson(QJsonDocument::Compact);
+    log("info", QString("jsonToString(): Converted QJsonObject to QByteArray: %1").arg(ba.data()));
+    /*
+    QJsonObject json2 = stringToJson(ba.data());
+    log("info", QString("reconvert the last json to jsonobject, json=%1").arg(jsonToReadableString(json2).data()));
+    log("info", QString("action = %1").arg(json2.find("action").value().toString()));
+    */
     return ba;
+}
+
+QByteArray ClientConnectionThread::jsonToReadableString(QJsonObject json)
+{
+    QJsonDocument doc(json);
+    QByteArray ba = doc.toJson(QJsonDocument::Compact);
+    return ba;
+}
+
+QJsonObject ClientConnectionThread::stringToJson(const char *bytes)
+{
+    QJsonDocument doc = QJsonDocument::fromJson(bytes);
+    QJsonObject json = doc.object();
+    return json;
 }
 
 void ClientConnectionThread::log(QString level, QString msg)
 {
-    qDebug() << "ClientConnectionThread: " << level << ": " << msg << endl;
+    qDebug() << level << QString(": ClientConnectionThread::%1").arg(msg) << endl;
 }
 
 /**
@@ -29,7 +49,7 @@ void ClientConnectionThread::log(QString level, QString msg)
  */
 void ClientConnectionThread::run()
 {
-    log("info", "Starting this thread");
+    log("info", "run(): Starting this thread");
     // Use linux socket to establish the server
     /* 该函数包含三个参数:
      * domain参数用于指定所创建套接字的协议类型。通常选用AF_INET，表示使用IPv4的TCP/IP协议；如果只在本机内进行进程间通信，则可以使用AF_UNIX。
@@ -43,9 +63,7 @@ void ClientConnectionThread::run()
         error.clear();
         return;
     }
-    info = "Created a socket file handle";
-    log("info", info);
-    info.clear();
+    log("info", "run(): Created a socket file handle");
 
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
@@ -83,24 +101,21 @@ void ClientConnectionThread::run()
             error.clear();
             continue;
         }
-        if (strlen(buffer) == 0)  // has received nothing
-        {
+        if (n == 0 || strlen(buffer) == 0)  // has received nothing
             continue;
-        }
-        info = QString("Received string from server: length=%s").arg(n);
-        log("info", info);
-        info.clear();
+        log("info", QString("run(): Received string from server: length=%1, content=%2").arg(n).arg(buffer));
 
-        parseReceived(buffer, n);
+        parseReceived(buffer);
     }
     close(socketfd);
 }
 
-void ClientConnectionThread::parseReceived(const char *bytes, int length)
+void ClientConnectionThread::parseReceived(const char *bytes)
 {
-    QJsonDocument doc = QJsonDocument::fromRawData(bytes, length);
-    QJsonObject jsonRec = doc.object();
+    QJsonObject jsonRec = stringToJson(bytes);
     QString action = jsonRec.find("action").value().toString();
+    log("info", QString("parseReceived(): data=%1").arg(bytes));
+    log("info", QString("parseReceived(): action=%1").arg(action));
 
     /*
     action: "server_login_response"
@@ -108,7 +123,7 @@ void ClientConnectionThread::parseReceived(const char *bytes, int length)
     */
     if (action == "server_login_response")
     {
-        log("info", "Action: server login response");
+        log("info", "parseReceived(): Action: server login response");
         bool result = jsonRec.find("correct").value().toBool();
         if (!this->userValidated)
         {
@@ -116,12 +131,12 @@ void ClientConnectionThread::parseReceived(const char *bytes, int length)
             {
                 emit signal_user_validation(true);
                 this->userValidated = true;
-                log("info", "Login succeeded.");
+                log("info", "parseReceived(): Login succeeded.");
             }
             else
             {
                 emit signal_user_validation(false);
-                log("info", "Wrong username or password.");
+                log("info", "parseReceived(): Wrong username or password.");
             }
         }
         // else ignore
@@ -140,9 +155,18 @@ void ClientConnectionThread::slot_send_bytes(const char *bytes)
         log("error", error);
         error.clear();
     }
-    info = QString("Send data to server, length=%1").arg(strlen(bytes));
+    info = QString("Send data to server, length=%1, content=%2").arg(strlen(bytes)).arg(bytes);
     log("info", info);
     info.clear();
+
+    // Re-convert bytes...
+
+}
+
+void ClientConnectionThread::slot_send_json(QJsonObject jsonObject)
+{
+    char* data = jsonToString(jsonObject).data();
+    slot_send_bytes(data);
 }
 
 /*
@@ -156,10 +180,7 @@ void ClientConnectionThread::slot_send_login(QString username, QString password)
     json.insert("action", QJsonValue("client_login"));
     json.insert("username", QJsonValue(username));
     json.insert("password", QJsonValue(password));
-    char* data = jsonToString(json).data();
-    slot_send_bytes(data);
+    slot_send_json(json);
 
-    info = QString("Send login info to server: length=%1").arg(data);
-    log("info", info);
-    info.clear();
+    log("info", "Send login info to server");
 }
