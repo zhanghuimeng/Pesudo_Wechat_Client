@@ -101,11 +101,13 @@ void ClientConnectionThread::run()
             error.clear();
             continue;
         }
+        buffer[n] = '\0';
         if (n == 0 || strlen(buffer) == 0)  // has received nothing
             continue;
         log("info", QString("run(): Received string from server: length=%1, content=%2").arg(n).arg(buffer));
 
         parseReceived(buffer);
+        memset(buffer, 0, sizeof(char) * MAXLEN);
     }
     close(socketfd);
 }
