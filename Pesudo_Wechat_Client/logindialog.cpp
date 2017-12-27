@@ -6,11 +6,23 @@ LoginDialog::LoginDialog(QWidget *parent) :
     ui(new Ui::LoginDialog)
 {
     ui->setupUi(this);
+    ui->errorLabel->hide();
 }
 
 LoginDialog::~LoginDialog()
 {
     delete ui;
+}
+
+void LoginDialog::slot_validation_result(bool result)
+{
+    if (result)
+        this->destroy();
+    else
+    {
+        ui->errorLabel->show();
+        ui->passwordLineEdit->clear();
+    }
 }
 
 void LoginDialog::on_buttonBox_accepted()

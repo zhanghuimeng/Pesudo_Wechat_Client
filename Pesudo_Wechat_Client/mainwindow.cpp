@@ -24,6 +24,7 @@ void MainWindow::login()
 {
     dialog->setWindowTitle(tr("登录"));
     connect(dialog, SIGNAL(signal_accepted_username(QString,QString)), this, SLOT(slot_validate_user(QString, QString)));
+    connect(clientConnectionThread, SIGNAL(signal_user_validation(bool)), dialog, SLOT(slot_validation_result(bool)));
     dialog->show();
 }
 

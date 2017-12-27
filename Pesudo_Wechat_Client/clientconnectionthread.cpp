@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 
-ClientConnectionThread::ClientConnectionThread(): QThread(), port(6666)
+ClientConnectionThread::ClientConnectionThread(): QThread(), port(6666), userValidated(false), buffer(new char[MAXLEN])
 {   
 }
 
@@ -75,8 +75,8 @@ void ClientConnectionThread::run()
     // jumping into the major loop
     while (true)
     {
-        int i = recv(socketfd, buffer, sizeof(buffer), 0);
-        if (i < 0)
+        int n = recv(socketfd, buffer, MAXLEN, 0);
+        if (n < 0)
         {
             error = "Receiving error";
             log("error", error);
@@ -87,11 +87,45 @@ void ClientConnectionThread::run()
         {
             continue;
         }
-        info = QString("Received string from server: length=%s").arg(strlen(buffer));
+        info = QString("Received string from server: length=%s").arg(n);
         log("info", info);
         info.clear();
+
+        parseReceived(buffer, n);
     }
     close(socketfd);
+}
+
+void ClientConnectionThread::parseReceived(const char *bytes, int length)
+{
+    QJsonDocument doc = QJsonDocument::fromRawData(bytes, length);
+    QJsonObject jsonRec = doc.object();
+    QString action = jsonRec.find("action").value().toString();
+
+    /*
+    action: "server_login_response"
+    correct: "true/false"
+    */
+    if (action == "server_login_response")
+    {
+        log("info", "Action: server login response");
+        bool result = jsonRec.find("correct").value().toBool();
+        if (!this->userValidated)
+        {
+            if (result)
+            {
+                emit signal_user_validation(true);
+                this->userValidated = true;
+                log("info", "Login succeeded.");
+            }
+            else
+            {
+                emit signal_user_validation(false);
+                log("info", "Wrong username or password.");
+            }
+        }
+        // else ignore
+    }
 }
 
 /**

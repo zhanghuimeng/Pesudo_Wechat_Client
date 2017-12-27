@@ -14,24 +14,33 @@
 
 class ClientConnectionThread: public QThread
 {
+    Q_OBJECT
 public:
     ClientConnectionThread();
     void run();
+
+signals:
+    void signal_user_validation(bool succeeded);
 
 public slots:
     void slot_send_login(QString username, QString password);
     void slot_send_bytes(const char* bytes);
 
+protected:
+    void parseReceived(const char* bytes, int length);
+
 private:
     void log(QString level, QString msg);
     QByteArray jsonToString(QJsonObject json);
 
-    char buffer[MAXLEN];
+    char* buffer;
     int socketfd;  // 套接字描述符
     int port;
     struct sockaddr_in serverAddr;
     QString error;
     QString info;
+
+    bool userValidated;
 };
 
 #endif // CLIENTCONNECTION_H

@@ -18,6 +18,9 @@ public:
 signals:
     void signal_accepted_username(QString username, QString password);
 
+public slots:
+    void slot_validation_result(bool result);
+
 private slots:
     void on_buttonBox_accepted();
 
