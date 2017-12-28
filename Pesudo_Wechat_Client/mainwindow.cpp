@@ -7,7 +7,7 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    clientConnectionThread(new ClientConnectionThread())
+    clientConnectionThread(new ClientConnectionThread()), curId(-1)
 {
     ui->setupUi(this);
     dialog = new LoginDialog(this);
@@ -16,6 +16,8 @@ MainWindow::MainWindow(QWidget *parent) :
     qRegisterMetaType<QMap<int,QString>>("QMap<int,QString>");
     connect(clientConnectionThread, SIGNAL(signal_friendlist_changed(QMap<int,QString>)), this,
             SLOT(slot_friendlist_changed(QMap<int,QString>)));
+    // change talker
+    connect(ui->friendListWidget, SIGNAL(currentTextChanged(QString)), this, SLOT(slot_change_talker(QString)));
     // Send json from Child Thread
     connect(this, SIGNAL(signal_send(QJsonObject)), clientConnectionThread, SLOT(slot_send_json(QJsonObject)));
     clientConnectionThread->start();
@@ -72,11 +74,62 @@ void MainWindow::slot_send_refresh_friends()
     log("info", "slot_send_refresh_friends(): Sending request to server");
 }
 
+/**
+ * @brief Connected with friendListWidget::currentTextChanged(QString)
+ * @param username
+ */
+void MainWindow::slot_change_talker(QString username)
+{
+    int id = -1;
+    QList<int> idList = this->friendMap.keys();
+    for (int i = 0; i < idList.size(); i++)
+    {
+        if (friendMap.find(i).value() == username)
+        {
+            id = i;
+            break;
+        }
+    }
+    if (id == -1)
+    {
+        log("info", "slot_change_talker(): cannot find clicked item");
+        return;
+    }
+    log("info", QString("slot_change_talker(): clicked item id=%1").arg(id));
+    // hide old box
+    if (curId != -1)
+        chatboxMap.find(curId).value()->hide();
+
+    curId = id;
+    chatboxMap.find(curId).value()->show();
+}
+
+/*
+action: "send_text_to_server"
+text: {text: "send some text blabla...", time: "2017/1/1:00:00:00", sendby: "zhm_1", sendto: "zhm_2"}
+*/
+void MainWindow::slot_send_text(int id, QDateTime time, QString text)
+{
+    log("info", "slot_send_text(): I send text: " + text);
+}
+
+void MainWindow::slot_send_file(int id, QDateTime time, QUrl fileUrl)
+{
+    log("info", "slot_send_file(): I send file: " + fileUrl.toString());
+}
+
 // add a friend to left
 void MainWindow::addFriend(int id, QString username)
 {
     ui->friendListWidget->addItem(username);
-    this->chatboxMap.insert(id, new ChatBox());
+    ChatBox* chatBox = new ChatBox(id, username);
+    this->chatboxMap.insert(id, chatBox);
+    // ChatBox signal to send text
+    connect(chatBox, SIGNAL(signal_send_file(int,QDateTime,QUrl)), this, SLOT(slot_send_file(int,QDateTime,QUrl)));
+    connect(chatBox, SIGNAL(signal_send_text(int,QDateTime,QString)), this, SLOT(slot_send_text(int,QDateTime,QString)));
+    // hide and add to layout
+    chatBox->hide();
+    ui->verticalLayout->addWidget(chatBox);
 }
 
 MainWindow::~MainWindow()

@@ -30,7 +30,8 @@ SOURCES += \
     clientconnectionthread.cpp \
     chatbox.cpp \
     messagelistwidget.cpp \
-    user.cpp
+    user.cpp \
+    messagelabel.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -38,7 +39,8 @@ HEADERS += \
     clientconnectionthread.h \
     chatbox.h \
     messagelistwidget.h \
-    user.h
+    user.h \
+    messagelabel.h
 
 FORMS += \
         mainwindow.ui \

@@ -2,7 +2,7 @@
 #define MESSAGELISTWIDGET_H
 
 #include <QWidget>
-#include <QHBoxLayout>
+#include <QVBoxLayout>
 
 namespace Ui {
 class MessageListWidget;
@@ -22,7 +22,7 @@ public slots:
 
 private:
     Ui::MessageListWidget *ui;
-    QHBoxLayout* hLayout;
+    QVBoxLayout* mainVLayout;
 };
 
 #endif // MESSAGELISTWIDGET_H

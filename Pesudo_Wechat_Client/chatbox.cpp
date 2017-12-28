@@ -1,10 +1,15 @@
 #include "chatbox.h"
 #include "ui_chatbox.h"
 #include <QFileDialog>
+#include <QUrl>
+#include <QFileInfo>
+#include <QMessageBox>
 
-ChatBox::ChatBox(QWidget *parent) :
+ChatBox::ChatBox(int id, QString username, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::ChatBox)
+    ui(new Ui::ChatBox),
+    id(id),
+    username(username)
 {
     ui->setupUi(this);
     ui->emptyLabel->hide();
@@ -17,9 +22,18 @@ ChatBox::ChatBox(QWidget *parent) :
 
 void ChatBox::slot_clicked_file()
 {
-    QString file = QFileDialog::getOpenFileName("/home/", "All Files (size < 1MB)", this);
-    ui->messageListWidget->slot_add_right(tr(QString("上传文件\n") + file));
-    emit signal_send_file(file);
+    QUrl fileUrl = QFileDialog::getOpenFileUrl(this, tr("上传文件"), QUrl("/home/"), "All Files (size < 1MB)");
+    QFileInfo fileInfo(fileUrl.path());
+    if (fileInfo.size() > 1024*1024)  // 1MB
+    {
+        QMessageBox::critical(this, QObject::tr("错误"),
+                              QObject::tr(QString("文件大小为%1MB，大于1MB").arg(fileInfo.size() / 1024.0*1024.0).toStdString().c_str()),
+                              QMessageBox::Ok);
+        return;
+    }
+    ui->messageListWidget->slot_add_right(
+                QObject::tr(QString("上传文件\n%1").arg(fileUrl.toString()).toStdString().c_str()));
+    emit signal_send_file(id, QDateTime::currentDateTime(), fileUrl);
 }
 
 void ChatBox::slot_clicked_send()
@@ -29,7 +43,7 @@ void ChatBox::slot_clicked_send()
     QString text = ui->textEdit->toPlainText();
     ui->messageListWidget->slot_add_right(text);
     ui->textEdit->clear();
-    emit signal_send_text(text);
+    emit signal_send_text(id, QDateTime::currentDateTime(), text);
 }
 
 ChatBox::~ChatBox()

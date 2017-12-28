@@ -38,7 +38,7 @@
      </widget>
     </item>
     <item>
-     <widget class="ChatBox" name="widget" native="true"/>
+     <layout class="QVBoxLayout" name="verticalLayout"/>
     </item>
    </layout>
   </widget>
@@ -75,14 +75,6 @@
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <customwidgets>
-  <customwidget>
-   <class>ChatBox</class>
-   <extends>QWidget</extends>
-   <header location="global">chatbox.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

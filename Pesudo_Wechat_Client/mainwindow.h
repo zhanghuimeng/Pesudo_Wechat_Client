@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QMap>
+#include <QUrl>
 #include "logindialog.h"
 #include "clientconnectionthread.h"
 #include "chatbox.h"
@@ -28,6 +29,9 @@ public slots:
     void slot_validate_user(QString username, QString password);
     void slot_friendlist_changed(QMap<int, QString> map);
     void slot_send_refresh_friends();
+    void slot_send_text(int id, QDateTime time, QString text);  // signal from ChatBox
+    void slot_send_file(int id, QDateTime time, QUrl fileUrl);  // signal from ChatBox
+    void slot_change_talker(QString username);  // change chat box
 
 protected:
     void addFriend(int id, QString username);
@@ -43,6 +47,7 @@ private:
     QString info;
     QString error;
 
+    int curId;
     QMap<int, QString> friendMap;
     QMap<int, ChatBox*> chatboxMap;
 };
