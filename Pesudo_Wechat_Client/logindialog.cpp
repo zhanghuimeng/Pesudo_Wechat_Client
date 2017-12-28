@@ -19,7 +19,10 @@ LoginDialog::~LoginDialog()
 void LoginDialog::slot_validation_result(bool result)
 {
     if (result)
+    {
+        ((QWidget*) parent())->show();
         this->destroy();
+    }
     else
     {
         ui->errorLabel->show();

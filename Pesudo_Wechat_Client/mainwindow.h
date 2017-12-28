@@ -24,6 +24,7 @@ public:
 signals:
     void signal_username_result(bool correct);
     void signal_send(QJsonObject jsonObject);
+    void signal_send_file(int id, QDateTime time, QUrl fileUrl);  // send to ClientThread
 
 public slots:
     void slot_validate_user(QString username, QString password);
@@ -33,6 +34,7 @@ public slots:
     void slot_send_file(int id, QDateTime time, QUrl fileUrl);  // signal from ChatBox
     void slot_change_talker(QString username);  // change chat box
     void slot_received_text(QJsonObject jsonObject);  // signal from Client Thread
+    void slot_received_file(QDateTime time, QString sender, QString receiver, QString curFilePath);  // signal from Client Thread
 
 protected:
     void addFriend(int id, QString username);
@@ -42,7 +44,7 @@ private:
 
     Ui::MainWindow *ui;
     LoginDialog* dialog;
-    ClientThread* clientConnectionThread;
+    ClientThread* clientThread;
     QString username;
     QString password;
     QString info;

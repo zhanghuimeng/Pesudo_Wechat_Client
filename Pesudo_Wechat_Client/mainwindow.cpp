@@ -7,25 +7,31 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    clientConnectionThread(new ClientThread()), curId(-1)
+    clientThread(new ClientThread()), curId(-1)
 {
     ui->setupUi(this);
+    this->hide();
     dialog = new LoginDialog(this);
 
     // refresh friend list
     connect(ui->refreshAction, SIGNAL(triggered(bool)), this, SLOT(slot_send_refresh_friends()));
     qRegisterMetaType<QMap<int,QString>>("QMap<int,QString>");
-    connect(clientConnectionThread, SIGNAL(signal_friendlist_changed(QMap<int,QString>)), this,
+    connect(clientThread, SIGNAL(signal_friendlist_changed(QMap<int,QString>)), this,
             SLOT(slot_friendlist_changed(QMap<int,QString>)));
     // change talker
     connect(ui->friendListWidget, SIGNAL(currentTextChanged(QString)), this, SLOT(slot_change_talker(QString)));
     // Send json from Child Thread
-    connect(this, SIGNAL(signal_send(QJsonObject)), clientConnectionThread, SLOT(slot_send_json(QJsonObject)));
+    connect(this, SIGNAL(signal_send(QJsonObject)), clientThread, SLOT(slot_send_json(QJsonObject)));
     // receive text message
-    connect(clientConnectionThread, SIGNAL(signal_received_text(QJsonObject)), this,
+    connect(clientThread, SIGNAL(signal_received_text(QJsonObject)), this,
             SLOT(slot_received_text(QJsonObject)));
+    // receive file
+    connect(clientThread, SIGNAL(signal_received_file(QDateTime,QString,QString,QString)),
+            this, SLOT(slot_received_file(QDateTime,QString,QString,QString)));
+    // send file
+    connect(this, SIGNAL(signal_send_file(int,QDateTime,QUrl)), clientThread, SLOT(slot_send_file(int,QDateTime,QUrl)));
 
-    clientConnectionThread->start();
+    clientThread->start();
     login();
 }
 
@@ -38,7 +44,7 @@ void MainWindow::login()
 {
     dialog->setWindowTitle(tr("登录"));
     connect(dialog, SIGNAL(signal_accepted_username(QString,QString)), this, SLOT(slot_validate_user(QString, QString)));
-    connect(clientConnectionThread, SIGNAL(signal_user_validation(bool)), dialog, SLOT(slot_validation_result(bool)));
+    connect(clientThread, SIGNAL(signal_user_validation(bool)), dialog, SLOT(slot_validation_result(bool)));
     dialog->show();
 }
 
@@ -46,12 +52,13 @@ void MainWindow::slot_validate_user(QString username, QString password)
 {
     this->username = username;
     this->password = password;
+    ui->usernameLabel->setText(username);
     info = QString("username = %1").arg(username);
     log("info", info);
     info = QString("password = %1").arg(password);
     log("info", info);
     info.clear();
-    clientConnectionThread->slot_send_login(username, password);
+    clientThread->slot_send_login(username, password);
 }
 
 void MainWindow::slot_friendlist_changed(QMap<int, QString> map)
@@ -127,9 +134,16 @@ void MainWindow::slot_send_text(int id, QDateTime time, QString text)
     emit signal_send(jsonObject);
 }
 
+/**
+ * @brief the operation takes to much time, move to ClientThread
+ * @param id
+ * @param time
+ * @param fileUrl
+ */
 void MainWindow::slot_send_file(int id, QDateTime time, QUrl fileUrl)
 {
     log("info", "slot_send_file(): I send file: " + fileUrl.toString());
+    emit signal_send_file(id, time, fileUrl);
 }
 
 // received text message from server
@@ -144,9 +158,41 @@ void MainWindow::slot_received_text(QJsonObject jsonObject)
     QDateTime time = QDateTime::fromTime_t(uint(textObject.find("time").value().toInt()));
     QString sender = textObject.find("sendby").value().toString();
     QString sendto = textObject.find("sendto").value().toString();
-    if (sendto != username)
+    if (sendto != this->username)
     {
         log("error", QString("slot_received_text(): The receiver is not %1").arg(sendto));
+        return;
+    }
+    int senderId = -1;
+    QList<int> list = this->friendMap.keys();
+    for (int i = 0; i < list.size(); i++)
+    {
+        if (this->friendMap.find(list[i]).value() == sender)
+        {
+            senderId = list[i];
+            break;
+        }
+    }
+    if (senderId == -1)
+    {
+        log("error", QString("slot_received_text(): Cannot find sender %1").arg(sender));
+        return;
+    }
+    log("info", QString("slot_received_text(): The id of sender %1 is %2").arg(sender).arg(senderId));
+
+    this->chatboxMap.find(senderId).value()->slot_received_text(text, time);
+}
+
+// received text message from server
+/*
+action: "send_text_to_client"
+text: {text: "send some text blabla...", time: "2017/1/1:00:00:00", sendby: "zhm_1", sendto: "zhm_2"}
+*/
+void MainWindow::slot_received_file(QDateTime time, QString sender, QString receiver, QString curFilePath)
+{
+    if (receiver != this->username)
+    {
+        log("error", QString("slot_received_file(): The receiver is not %1").arg(receiver));
         return;
     }
     int senderId = -1;
@@ -161,12 +207,12 @@ void MainWindow::slot_received_text(QJsonObject jsonObject)
     }
     if (senderId == -1)
     {
-        log("error", QString("slot_received_text(): Cannot find sender %1").arg(sender));
+        log("error", QString("slot_received_file(): Cannot find sender %1").arg(sender));
         return;
     }
-    log("info", QString("slot_received_text(): The id of sender %1 is %2").arg(sender).arg(senderId));
+    log("info", QString("slot_received_file(): The id of sender %1 is %2").arg(sender).arg(senderId));
 
-    chatboxMap.find(senderId).value()->slot_received_text(text, time);
+    chatboxMap.find(senderId).value()->slot_received_file(time, curFilePath);
 }
 
 // add a friend to left

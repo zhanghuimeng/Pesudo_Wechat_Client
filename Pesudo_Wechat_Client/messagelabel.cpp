@@ -12,7 +12,8 @@ MessageLabel::MessageLabel(Type type, QString text, QWidget *parent) :
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     // this->setMaximumHeight(30);
     this->setMinimumWidth(80);
-    this->setMaximumWidth(200);
+    this->setMaximumWidth(500);
+    this->setWordWrap(true);
 }
 
 MessageLabel::~MessageLabel()

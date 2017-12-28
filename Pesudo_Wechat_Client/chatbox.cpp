@@ -28,7 +28,11 @@ void ChatBox::log(QString level, QString msg)
 
 void ChatBox::slot_clicked_file()
 {
-    QUrl fileUrl = QFileDialog::getOpenFileUrl(this, tr("上传文件"), QUrl("/home/"), "All Files (size < 1MB)");
+    QUrl fileUrl = QFileDialog::getOpenFileUrl(this, tr("上传文件"), QUrl("~/"), "All Files (*.*)");
+    if (fileUrl.path().size() == 0)
+    {
+        log("info", "slot_clicked_file(): the file path is empty");
+    }
     QFileInfo fileInfo(fileUrl.path());
     if (fileInfo.size() > 1024*1024)  // 1MB
     {
@@ -37,9 +41,10 @@ void ChatBox::slot_clicked_file()
                               QMessageBox::Ok);
         return;
     }
+    log("info", QString("slot_clicked_file(): the file path is %1").arg(fileUrl.path()));
     QDateTime time = QDateTime::currentDateTime();
     ui->messageListWidget->slot_add_right(time,
-                QObject::tr(QString("上传文件\n%1").arg(fileUrl.toString()).toStdString().c_str()));
+                QObject::tr(QString("上传文件\n\n%1").arg(fileUrl.toString()).toStdString().c_str()));
     emit signal_send_file(id, time, fileUrl);
 }
 
@@ -69,9 +74,11 @@ void ChatBox::slot_received_text(QString text, QDateTime time)
 /**
  * @brief ChatBox::slot_received_file
  */
-void ChatBox::slot_received_file()
+void ChatBox::slot_received_file(QDateTime time, QString curFilePath)
 {
-    // TODO
+    log("info", QString("slot_received_file(): time=%1, path=%2").arg(time.toString()).arg(curFilePath));
+    ui->messageListWidget->slot_add_left(time,
+                                          QObject::tr(QString("收到文件\n\n%1").arg(curFilePath).toStdString().c_str()));
 }
 
 ChatBox::~ChatBox()

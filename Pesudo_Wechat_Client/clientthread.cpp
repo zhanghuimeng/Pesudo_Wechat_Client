@@ -1,5 +1,6 @@
 #include "clientthread.h"
 #include <QDebug>
+#include <QFile>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -16,19 +17,12 @@ QByteArray ClientThread::jsonToString(QJsonObject json)
 {
     QJsonDocument doc(json);
     QByteArray ba = doc.toJson(QJsonDocument::Compact);
-    log("info", QString("jsonToString(): Converted QJsonObject to QByteArray: %1").arg(ba.data()));
+    log("info", QString("jsonToString(): Converted QJsonObject to QByteArray: length=%1").arg(ba.size()));
     /*
     QJsonObject json2 = stringToJson(ba.data());
     log("info", QString("reconvert the last json to jsonobject, json=%1").arg(jsonToReadableString(json2).data()));
     log("info", QString("action = %1").arg(json2.find("action").value().toString()));
     */
-    return ba;
-}
-
-QByteArray ClientThread::jsonToReadableString(QJsonObject json)
-{
-    QJsonDocument doc(json);
-    QByteArray ba = doc.toJson(QJsonDocument::Compact);
     return ba;
 }
 
@@ -180,8 +174,38 @@ void ClientThread::parseReceived(const char *bytes)
     */
     else if (action == "send_text_to_client")
     {
-        emit signal_received_text(jsonRec);
         log("info", QString("parseReceived(): received text message"));
+        emit signal_received_text(jsonRec);
+    }
+    /*
+    action: "send_file_to_client"
+    file: {filename: "a.png", content: "用base64压缩之后的文件", time: "2017/1/1:00:00:00", sendby: "zhm_1", sendto: "zhm_2"}
+    */
+    else if (action == "send_file_to_client")
+    {
+        // save file, send to ui
+        // ~/Downloads/
+        QJsonObject fileObject = jsonRec.find("file").value().toObject();
+        QString filename = fileObject.find("filename").value().toString();
+        QDateTime time = QDateTime::fromTime_t(qint64(fileObject.find("time").value().toInt()));
+        QString sender = fileObject.find("sendby").value().toString();
+        QString receiver = fileObject.find("sendto").value().toString();
+
+        QString rawContent = fileObject.find("content").value().toString();
+        QByteArray encrypted = QByteArray::fromBase64(rawContent.toLocal8Bit());  // TOOD: is this right?  ok.
+        QByteArray original = qUncompress(encrypted);
+        QString curFilePath = QString("/home/zhanghuimeng/Downloads/%1_%2").arg(time.toTime_t()).arg(filename);
+        QFile file(curFilePath);
+        if (!file.open(QIODevice::WriteOnly))
+        {
+            log("error", QString("parseReceived(): cannot open file %1 to write").arg(curFilePath));
+            return;
+        }
+
+        file.write(original.data(), original.size());
+        file.close();
+
+        emit signal_received_file(time, sender, receiver, curFilePath);
     }
 }
 
@@ -196,7 +220,7 @@ void ClientThread::slot_send_bytes(const char *bytes)
         log("error", "slot_send_bytes(): Cannot send data to server");
         return;
     }
-    log("info", QString("slot_send_bytes(): Send data to server, length=%1, content=%2").arg(strlen(bytes)).arg(bytes));
+    log("info", QString("slot_send_bytes(): Send data to server, length=%1").arg(strlen(bytes)));
 }
 
 void ClientThread::slot_send_json(QJsonObject jsonObject)
@@ -219,4 +243,49 @@ void ClientThread::slot_send_login(QString username, QString password)
     slot_send_json(json);
 
     log("info", "slot_send_login(): Send login info to server");
+    this->username = username;
+    this->password = password;
+    // not really right, but according to logic should be right
+}
+
+/*
+action: "send_file_to_server"
+file: {filename: "a.png", content: "用base64压缩之后的文件", time: "2017/1/1:00:00:00", sendby: "zhm_1", sendto: "zhm_2"}
+*/
+void ClientThread::slot_send_file(int id, QDateTime time, QUrl fileUrl)
+{
+    if (!idToUserMap.contains(id) || idToUserMap.find(id).value() == NULL)
+    {
+        log("error", QString("slot_send_file(): cannot find receiver id %1").arg(id));
+        return;
+    }
+
+    QString receiver = idToUserMap.find(id).value()->getUsername();
+    log("info", QString("slot_send_file(): file receiver name is %1").arg(receiver));
+    QFile file(fileUrl.path());
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        log("error", QString("slot_send_file(): cannot open file %1").arg(fileUrl.path()));
+        return;
+    }
+
+    // compress and base64 (to ASCII)
+    QByteArray blob = file.readAll();
+    QByteArray encrypted = qCompress(blob);
+    QString base64ed = encrypted.toBase64().toStdString().c_str();
+    log("info", QString("slot_send_file(): file original size=%1, compressed size=%2, base84 size=%3")
+        .arg(blob.size()).arg(encrypted.size()).arg(base64ed.size()));
+
+    QJsonObject jsonObject;
+    QJsonObject fileObject;
+    fileObject.insert("filename", QJsonValue(fileUrl.fileName()));
+    fileObject.insert("content", QJsonValue(base64ed));
+    fileObject.insert("time", QJsonValue(qint64(time.toTime_t())));
+    fileObject.insert("sendby", QJsonValue(this->username));
+    fileObject.insert("sendto", QJsonValue(receiver));
+
+    jsonObject.insert("file", QJsonValue(fileObject));
+    jsonObject.insert("action", "send_file_to_server");
+
+    this->slot_send_json(jsonObject);
 }

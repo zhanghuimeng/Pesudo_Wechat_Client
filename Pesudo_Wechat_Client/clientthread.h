@@ -8,12 +8,14 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QDateTime>
+#include <QUrl>
 #include <QThread>
 #include <QSet>
 #include "user.h"
 
 #define MAXLEN 1050000
-#define PORT 5234
+#define PORT 2326
 
 class ClientThread: public QThread
 {
@@ -25,12 +27,14 @@ public:
 signals:
     void signal_user_validation(bool succeeded);
     void signal_friendlist_changed(QMap<int, QString>);
-    void signal_received_text(QJsonObject jsonObject);
+    void signal_received_text(QJsonObject jsonObject);  // send to MainWindow
+    void signal_received_file(QDateTime time, QString sender, QString receiver, QString curFilePath);  // send to MainWindow
 
 public slots:
     void slot_send_login(QString username, QString password);
     void slot_send_bytes(const char* bytes);
     void slot_send_json(QJsonObject jsonObject);
+    void slot_send_file(int id, QDateTime time, QUrl fileUrl);  // send by MainWindow
 
 protected:
     void parseReceived(const char* bytes);
@@ -38,7 +42,6 @@ protected:
 private:
     void log(QString level, QString msg);
     QByteArray jsonToString(QJsonObject json);
-    QByteArray jsonToReadableString(QJsonObject json);
     QJsonObject stringToJson(const char *bytes);
 
     char* buffer;
@@ -49,6 +52,8 @@ private:
     QString info;
     UserMap userMap;
     QMap<int, User*> idToUserMap;
+    QString username;
+    QString password;
 
     bool userValidated;
 };
