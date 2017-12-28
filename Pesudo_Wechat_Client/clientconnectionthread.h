@@ -13,7 +13,7 @@
 #include "user.h"
 
 #define MAXLEN 1050000
-#define PORT 3333
+#define PORT 3777
 
 class ClientConnectionThread: public QThread
 {
@@ -47,6 +47,7 @@ private:
     QString error;
     QString info;
     UserMap userMap;
+    QMap<int, User*> idToUserMap;
 
     bool userValidated;
 };

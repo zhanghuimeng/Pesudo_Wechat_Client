@@ -111,6 +111,15 @@ text: {text: "send some text blabla...", time: "2017/1/1:00:00:00", sendby: "zhm
 void MainWindow::slot_send_text(int id, QDateTime time, QString text)
 {
     log("info", "slot_send_text(): I send text: " + text);
+    QJsonObject jsonObject;
+    QJsonObject textObject;
+    textObject.insert("text", QJsonValue(text));
+    textObject.insert("time", QJsonValue(qint64(time.toTime_t())));
+    textObject.insert("sendby", this->username);
+    textObject.insert("sendto", friendMap.find(id).value());
+    jsonObject.insert("action", QJsonValue("send_text_to_server"));
+    jsonObject.insert("text", QJsonValue(textObject));
+    emit signal_send(jsonObject);
 }
 
 void MainWindow::slot_send_file(int id, QDateTime time, QUrl fileUrl)

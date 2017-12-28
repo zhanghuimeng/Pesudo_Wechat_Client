@@ -38,7 +38,7 @@ void ChatBox::slot_clicked_file()
 
 void ChatBox::slot_clicked_send()
 {
-    if (ui->textEdit->toPlainText().isEmpty())
+    if (ui->textEdit->toPlainText().size() == 0)
         ui->emptyLabel->show();
     QString text = ui->textEdit->toPlainText();
     ui->messageListWidget->slot_add_right(text);

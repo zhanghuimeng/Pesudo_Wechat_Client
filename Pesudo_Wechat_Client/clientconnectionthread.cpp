@@ -166,6 +166,7 @@ void ClientConnectionThread::parseReceived(const char *bytes)
                 changed = true;
                 User* user = new User(username);
                 userMap.addUser(user);
+                idToUserMap.insert(user->getId(), user);
                 newFriendMap.insert(user->getId(), username);
                 log("info", QString("parseReceived(): new friend username=%1, id=%2").arg(username).arg(user->getId()));
             }
