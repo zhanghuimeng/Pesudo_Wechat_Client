@@ -7,6 +7,8 @@ LoginDialog::LoginDialog(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->errorLabel->hide();
+    connect(ui->usernameLineEdit, SIGNAL(textEdited(QString)), ui->errorLabel, SLOT(hide()));
+    connect(ui->passwordLineEdit, SIGNAL(textEdited(QString)), ui->errorLabel, SLOT(hide()));
 }
 
 LoginDialog::~LoginDialog()

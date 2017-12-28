@@ -9,8 +9,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QThread>
+#include <QSet>
+#include "user.h"
 
 #define MAXLEN 1050000
+#define PORT 3333
 
 class ClientConnectionThread: public QThread
 {
@@ -21,6 +24,7 @@ public:
 
 signals:
     void signal_user_validation(bool succeeded);
+    void signal_friendlist_changed(QMap<int, QString>);
 
 public slots:
     void slot_send_login(QString username, QString password);
@@ -42,6 +46,7 @@ private:
     struct sockaddr_in serverAddr;
     QString error;
     QString info;
+    UserMap userMap;
 
     bool userValidated;
 };

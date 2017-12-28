@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 
-ClientConnectionThread::ClientConnectionThread(): QThread(), port(6666), userValidated(false), buffer(new char[MAXLEN])
+ClientConnectionThread::ClientConnectionThread(): QThread(), port(PORT), userValidated(false), buffer(new char[MAXLEN])
 {   
 }
 
@@ -143,6 +143,36 @@ void ClientConnectionThread::parseReceived(const char *bytes)
         }
         // else ignore
     }
+    /*
+    action: "send_friends_list_to_client"
+    friends: [{username: "zhm_2"}, {username: "zhm_3"}]
+    */
+    else if (action == "send_friends_list_to_client")
+    {
+        log("info", "parseReceived(): Action: receive friends information");
+        bool changed = false;
+        QJsonArray friendArray = jsonRec.find("friends").value().toArray();
+        // log("info", QString("parseReceived(): friend size=%1").arg(friendArray.size()));
+        // log("info", QString("parseReceived(): username list size=%1").arg(userMap.getUsernameList().size()));
+        QMap<int, QString> newFriendMap;
+        foreach (const QJsonValue& value, friendArray)
+        {
+            QJsonObject obj = value.toObject();
+            QString username = obj.find("username").value().toString();
+            // log("info", QString("parseReceived(): friend username=%1").arg(username));
+            // log("info", QString("parseReceived(): hasUser=%1").arg(userMap.hasUser(username)));
+            if (!userMap.hasUser(username))
+            {
+                changed = true;
+                User* user = new User(username);
+                userMap.addUser(user);
+                newFriendMap.insert(user->getId(), username);
+                log("info", QString("parseReceived(): new friend username=%1, id=%2").arg(username).arg(user->getId()));
+            }
+        }
+        if (changed)
+            emit signal_friendlist_changed(newFriendMap);
+    }
 }
 
 /**
@@ -153,16 +183,10 @@ void ClientConnectionThread::slot_send_bytes(const char *bytes)
 {
     if (send(socketfd, bytes, strlen(bytes), 0) < 0)
     {
-        error = "Cannot send data to server";
-        log("error", error);
-        error.clear();
+        log("error", "slot_send_bytes(): Cannot send data to server");
+        return;
     }
-    info = QString("Send data to server, length=%1, content=%2").arg(strlen(bytes)).arg(bytes);
-    log("info", info);
-    info.clear();
-
-    // Re-convert bytes...
-
+    log("info", QString("slot_send_bytes(): Send data to server, length=%1, content=%2").arg(strlen(bytes)).arg(bytes));
 }
 
 void ClientConnectionThread::slot_send_json(QJsonObject jsonObject)
@@ -184,5 +208,5 @@ void ClientConnectionThread::slot_send_login(QString username, QString password)
     json.insert("password", QJsonValue(password));
     slot_send_json(json);
 
-    log("info", "Send login info to server");
+    log("info", "slot_send_login(): Send login info to server");
 }

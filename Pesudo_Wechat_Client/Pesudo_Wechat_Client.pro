@@ -27,13 +27,21 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     logindialog.cpp \
-    clientconnectionthread.cpp
+    clientconnectionthread.cpp \
+    chatbox.cpp \
+    messagelistwidget.cpp \
+    user.cpp
 
 HEADERS += \
         mainwindow.h \
     logindialog.h \
-    clientconnectionthread.h
+    clientconnectionthread.h \
+    chatbox.h \
+    messagelistwidget.h \
+    user.h
 
 FORMS += \
         mainwindow.ui \
-    logindialog.ui
+    logindialog.ui \
+    chatbox.ui \
+    messagelistwidget.ui
