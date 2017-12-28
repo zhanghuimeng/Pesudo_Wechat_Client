@@ -13,18 +13,19 @@
 #include "user.h"
 
 #define MAXLEN 1050000
-#define PORT 3777
+#define PORT 5234
 
-class ClientConnectionThread: public QThread
+class ClientThread: public QThread
 {
     Q_OBJECT
 public:
-    ClientConnectionThread();
+    ClientThread();
     void run();
 
 signals:
     void signal_user_validation(bool succeeded);
     void signal_friendlist_changed(QMap<int, QString>);
+    void signal_received_text(QJsonObject jsonObject);
 
 public slots:
     void slot_send_login(QString username, QString password);

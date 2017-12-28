@@ -7,10 +7,11 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    clientConnectionThread(new ClientConnectionThread()), curId(-1)
+    clientConnectionThread(new ClientThread()), curId(-1)
 {
     ui->setupUi(this);
     dialog = new LoginDialog(this);
+
     // refresh friend list
     connect(ui->refreshAction, SIGNAL(triggered(bool)), this, SLOT(slot_send_refresh_friends()));
     qRegisterMetaType<QMap<int,QString>>("QMap<int,QString>");
@@ -20,6 +21,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->friendListWidget, SIGNAL(currentTextChanged(QString)), this, SLOT(slot_change_talker(QString)));
     // Send json from Child Thread
     connect(this, SIGNAL(signal_send(QJsonObject)), clientConnectionThread, SLOT(slot_send_json(QJsonObject)));
+    // receive text message
+    connect(clientConnectionThread, SIGNAL(signal_received_text(QJsonObject)), this,
+            SLOT(slot_received_text(QJsonObject)));
+
     clientConnectionThread->start();
     login();
 }
@@ -125,6 +130,43 @@ void MainWindow::slot_send_text(int id, QDateTime time, QString text)
 void MainWindow::slot_send_file(int id, QDateTime time, QUrl fileUrl)
 {
     log("info", "slot_send_file(): I send file: " + fileUrl.toString());
+}
+
+// received text message from server
+/*
+action: "send_text_to_client"
+text: {text: "send some text blabla...", time: "2017/1/1:00:00:00", sendby: "zhm_1", sendto: "zhm_2"}
+*/
+void MainWindow::slot_received_text(QJsonObject jsonObject)
+{
+    QJsonObject textObject = jsonObject.find("text").value().toObject();
+    QString text = textObject.find("text").value().toString();
+    QDateTime time = QDateTime::fromTime_t(uint(textObject.find("time").value().toInt()));
+    QString sender = textObject.find("sendby").value().toString();
+    QString sendto = textObject.find("sendto").value().toString();
+    if (sendto != username)
+    {
+        log("error", QString("slot_received_text(): The receiver is not %1").arg(sendto));
+        return;
+    }
+    int senderId = -1;
+    QList<int> list = friendMap.keys();
+    for (int i = 0; i < list.size(); i++)
+    {
+        if (friendMap.find(list[i]).value() == sender)
+        {
+            senderId = list[i];
+            break;
+        }
+    }
+    if (senderId == -1)
+    {
+        log("error", QString("slot_received_text(): Cannot find sender %1").arg(sender));
+        return;
+    }
+    log("info", QString("slot_received_text(): The id of sender %1 is %2").arg(sender).arg(senderId));
+
+    chatboxMap.find(senderId).value()->slot_received_text(text, time);
 }
 
 // add a friend to left

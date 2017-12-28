@@ -24,6 +24,11 @@ signals:
 public slots:
     void slot_clicked_send();  // send message
     void slot_clicked_file();  // send file
+    void slot_received_text(QString text, QDateTime time);  // receive message from MainWindow
+    void slot_received_file();  // receive file from MainWindow
+
+protected:
+    void log(QString level, QString msg);
 
 private:
     Ui::ChatBox *ui;

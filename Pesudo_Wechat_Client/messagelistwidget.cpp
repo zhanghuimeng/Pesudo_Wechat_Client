@@ -21,15 +21,15 @@ MessageListWidget::MessageListWidget(QWidget *parent) :
     // ui->scrollArea->setWidget(mainVLayout->widget());
 }
 
-void MessageListWidget::slot_add_left(QString text)
+void MessageListWidget::slot_add_left(QDateTime time, QString text)
 {
     QHBoxLayout* hLayout = new QHBoxLayout(this);
-    hLayout->addWidget(new MessageLabel(MessageLabel::SEND, text, this));
+    hLayout->addWidget(new MessageLabel(MessageLabel::RECEIVE, text, this));
     hLayout->addStretch();
     mainVLayout->addLayout(hLayout);
 }
 
-void MessageListWidget::slot_add_right(QString text)
+void MessageListWidget::slot_add_right(QDateTime time, QString text)
 {
     QHBoxLayout* hLayout = new QHBoxLayout(this);
     hLayout->addStretch();

@@ -1,4 +1,4 @@
-#include "clientconnectionthread.h"
+#include "clientthread.h"
 #include <QDebug>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -8,11 +8,11 @@
 #include <cstdlib>
 #include <cstring>
 
-ClientConnectionThread::ClientConnectionThread(): QThread(), port(PORT), userValidated(false), buffer(new char[MAXLEN])
+ClientThread::ClientThread(): QThread(), port(PORT), userValidated(false), buffer(new char[MAXLEN])
 {   
 }
 
-QByteArray ClientConnectionThread::jsonToString(QJsonObject json)
+QByteArray ClientThread::jsonToString(QJsonObject json)
 {
     QJsonDocument doc(json);
     QByteArray ba = doc.toJson(QJsonDocument::Compact);
@@ -25,21 +25,21 @@ QByteArray ClientConnectionThread::jsonToString(QJsonObject json)
     return ba;
 }
 
-QByteArray ClientConnectionThread::jsonToReadableString(QJsonObject json)
+QByteArray ClientThread::jsonToReadableString(QJsonObject json)
 {
     QJsonDocument doc(json);
     QByteArray ba = doc.toJson(QJsonDocument::Compact);
     return ba;
 }
 
-QJsonObject ClientConnectionThread::stringToJson(const char *bytes)
+QJsonObject ClientThread::stringToJson(const char *bytes)
 {
     QJsonDocument doc = QJsonDocument::fromJson(bytes);
     QJsonObject json = doc.object();
     return json;
 }
 
-void ClientConnectionThread::log(QString level, QString msg)
+void ClientThread::log(QString level, QString msg)
 {
     qDebug() << level << QString(": ClientConnectionThread::%1").arg(msg) << endl;
 }
@@ -47,7 +47,7 @@ void ClientConnectionThread::log(QString level, QString msg)
 /**
  * @brief wait for server to send bunchs of bytes
  */
-void ClientConnectionThread::run()
+void ClientThread::run()
 {
     log("info", "run(): Starting this thread");
     // Use linux socket to establish the server
@@ -112,7 +112,7 @@ void ClientConnectionThread::run()
     close(socketfd);
 }
 
-void ClientConnectionThread::parseReceived(const char *bytes)
+void ClientThread::parseReceived(const char *bytes)
 {
     QJsonObject jsonRec = stringToJson(bytes);
     QString action = jsonRec.find("action").value().toString();
@@ -174,13 +174,22 @@ void ClientConnectionThread::parseReceived(const char *bytes)
         if (changed)
             emit signal_friendlist_changed(newFriendMap);
     }
+    /*
+    action: "send_text_to_client"
+    text: {text: "send some text blabla...", time: "2017/1/1:00:00:00", sendby: "zhm_1", sendto: "zhm_2"}
+    */
+    else if (action == "send_text_to_client")
+    {
+        emit signal_received_text(jsonRec);
+        log("info", QString("parseReceived(): received text message"));
+    }
 }
 
 /**
  * @brief send a bunch of bytes
  * @param bytes
  */
-void ClientConnectionThread::slot_send_bytes(const char *bytes)
+void ClientThread::slot_send_bytes(const char *bytes)
 {
     if (send(socketfd, bytes, strlen(bytes), 0) < 0)
     {
@@ -190,7 +199,7 @@ void ClientConnectionThread::slot_send_bytes(const char *bytes)
     log("info", QString("slot_send_bytes(): Send data to server, length=%1, content=%2").arg(strlen(bytes)).arg(bytes));
 }
 
-void ClientConnectionThread::slot_send_json(QJsonObject jsonObject)
+void ClientThread::slot_send_json(QJsonObject jsonObject)
 {
     char* data = jsonToString(jsonObject).data();
     slot_send_bytes(data);
@@ -201,7 +210,7 @@ action: "client_login"
 username: "zhm_x"
 password: "123456"
 */
-void ClientConnectionThread::slot_send_login(QString username, QString password)
+void ClientThread::slot_send_login(QString username, QString password)
 {
     QJsonObject json;
     json.insert("action", QJsonValue("client_login"));

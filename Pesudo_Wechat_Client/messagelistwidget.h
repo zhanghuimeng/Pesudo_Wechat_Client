@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QVBoxLayout>
+#include <QDateTime>
 
 namespace Ui {
 class MessageListWidget;
@@ -17,8 +18,8 @@ public:
     ~MessageListWidget();
 
 public slots:
-    void slot_add_left(QString text);
-    void slot_add_right(QString right);
+    void slot_add_left(QDateTime time, QString text);
+    void slot_add_right(QDateTime time, QString text);
 
 private:
     Ui::MessageListWidget *ui;

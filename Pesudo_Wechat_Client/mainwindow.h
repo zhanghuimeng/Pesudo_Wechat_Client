@@ -5,7 +5,7 @@
 #include <QMap>
 #include <QUrl>
 #include "logindialog.h"
-#include "clientconnectionthread.h"
+#include "clientthread.h"
 #include "chatbox.h"
 
 namespace Ui {
@@ -32,6 +32,7 @@ public slots:
     void slot_send_text(int id, QDateTime time, QString text);  // signal from ChatBox
     void slot_send_file(int id, QDateTime time, QUrl fileUrl);  // signal from ChatBox
     void slot_change_talker(QString username);  // change chat box
+    void slot_received_text(QJsonObject jsonObject);  // signal from Client Thread
 
 protected:
     void addFriend(int id, QString username);
@@ -41,7 +42,7 @@ private:
 
     Ui::MainWindow *ui;
     LoginDialog* dialog;
-    ClientConnectionThread* clientConnectionThread;
+    ClientThread* clientConnectionThread;
     QString username;
     QString password;
     QString info;
